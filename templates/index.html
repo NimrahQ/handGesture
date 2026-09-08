@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>CRUMBLE — Paper Remembers</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+
+        body {
+
+            background: #080808;
+
+            color: #eee9df;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            min-height: 100vh;
+
+            overflow: hidden;
+        }
+
+
+        /* =================================
+           NAVIGATION
+        ================================= */
+
+        nav {
+
+            height: 90px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            padding: 0 48px;
+
+            position: relative;
+
+            z-index: 10;
+        }
+
+
+        .logo {
+
+            font-size: 22px;
+
+            font-weight: 700;
+
+            letter-spacing: 0.5px;
+        }
+
+
+        .nav-links {
+
+            display: flex;
+
+            gap: 42px;
+
+            font-size: 16px;
+
+            font-weight: 600;
+        }
+
+
+        .nav-links span {
+
+            cursor: pointer;
+
+            transition: opacity 0.3s;
+        }
+
+
+        .nav-links span:hover {
+
+            opacity: 0.5;
+        }
+
+
+        /* =================================
+           MAIN
+        ================================= */
+
+        main {
+
+            height: calc(100vh - 90px);
+
+            display: grid;
+
+            grid-template-columns:
+                48% 52%;
+
+            padding: 40px 48px 48px;
+        }
+
+
+        /* =================================
+           LEFT SIDE
+        ================================= */
+
+        .left {
+
+            display: flex;
+
+            flex-direction: column;
+
+            justify-content: center;
+
+                padding-left: 120px;
+
+            position: relative;
+        }
+
+
+        .red-line {
+
+            width: 62px;
+
+            height: 1px;
+
+            background: #b8392f;
+
+            margin-bottom: 34px;
+        }
+
+
+        .eyebrow {
+
+            font-family: Georgia, serif;
+
+            color: #a9a296;
+
+            font-size: 15px;
+
+            letter-spacing: 2px;
+
+            text-transform: uppercase;
+
+            margin-bottom: 20px;
+        }
+
+
+        h1 {
+
+            font-size: clamp(
+                60px,
+                6vw,
+                96px
+            );
+
+            line-height: 0.92;
+
+            letter-spacing: -4px;
+
+            font-weight: 700;
+
+            max-width: 620px;
+        }
+
+
+        .description {
+
+            margin-top: 42px;
+
+            max-width: 520px;
+
+            font-family: Georgia, serif;
+
+            color: #aaa39a;
+
+            font-size: 20px;
+
+            line-height: 1.8;
+        }
+
+
+        /* =================================
+           BUTTON
+        ================================= */
+
+        .start-button {
+
+            margin-top: 42px;
+
+            width: fit-content;
+
+            padding: 18px 28px;
+
+            border: 1px solid #343434;
+
+            background: transparent;
+
+            color: #eee9df;
+
+            font-size: 15px;
+
+            font-weight: 600;
+
+            cursor: pointer;
+
+            transition:
+                background 0.3s,
+                border 0.3s;
+        }
+
+
+        .start-button:hover {
+
+            background: #eee9df;
+
+            color: #080808;
+
+            border-color: #eee9df;
+        }
+
+
+        .arrow {
+
+            color: #b8392f;
+
+            margin-left: 18px;
+
+            font-size: 20px;
+        }
+
+
+        /* =================================
+           RIGHT SIDE
+        ================================= */
+
+        .right {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            position: relative;
+        }
+
+
+        .video-wrapper {
+
+            width: min(
+                100%,
+                620px
+            );
+
+            aspect-ratio: 1 / 1;
+
+            overflow: hidden;
+
+            background: #101414;
+
+            position: relative;
+        }
+
+
+        video {
+
+            width: 100%;
+
+            height: 100%;
+
+            object-fit: cover;
+
+            display: block;
+        }
+
+
+        /* =================================
+           VIDEO OVERLAY
+        ================================= */
+
+        .video-label {
+
+            position: absolute;
+
+            left: 20px;
+
+            top: 20px;
+
+            padding: 8px 12px;
+
+            background: rgba(
+                0,
+                0,
+                0,
+                0.55
+            );
+
+            font-size: 11px;
+
+            letter-spacing: 2px;
+
+            text-transform: uppercase;
+        }
+
+
+        .camera-status {
+
+            position: absolute;
+
+            right: 20px;
+
+            top: 20px;
+
+            font-size: 11px;
+
+            letter-spacing: 1.5px;
+
+            text-transform: uppercase;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 8px;
+        }
+
+
+        .dot {
+
+            width: 7px;
+
+            height: 7px;
+
+            border-radius: 50%;
+
+            background: #b8392f;
+        }
+
+
+        /* =================================
+           INTERACTION PANEL
+        ================================= */
+
+        .interaction {
+
+            position: absolute;
+
+            left: 48px;
+
+            bottom: 35px;
+
+            width: calc(48% - 118px);
+
+            opacity: 0;
+
+            transform: translateY(20px);
+
+            pointer-events: none;
+
+            transition:
+                opacity 0.5s,
+                transform 0.5s;
+        }
+
+
+        .interaction.active {
+
+            opacity: 1;
+
+            transform: translateY(0);
+
+            pointer-events: auto;
+        }
+
+
+        .interaction-header {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            margin-bottom: 10px;
+
+            font-size: 12px;
+
+            text-transform: uppercase;
+
+            letter-spacing: 1.5px;
+        }
+
+
+        .progress-track {
+
+            width: 100%;
+
+            height: 3px;
+
+            background: #272727;
+
+            overflow: hidden;
+        }
+
+
+        .progress {
+
+            width: 0%;
+
+            height: 100%;
+
+            background: #eee9df;
+
+            transition: width 0.08s linear;
+        }
+
+
+        /* =================================
+           INTRO
+        ================================= */
+
+        .intro {
+
+            transition:
+                opacity 0.6s,
+                transform 0.6s;
+        }
+
+
+        .intro.hidden {
+
+            opacity: 0;
+
+            transform: translateY(-50px);
+
+            pointer-events: none;
+        }
+
+
+        /* =================================
+           RESPONSIVE
+        ================================= */
+
+        @media (max-width: 900px) {
+
+            body {
+
+                overflow: auto;
+            }
+
+
+            nav {
+
+                padding: 0 24px;
+            }
+
+
+            .nav-links {
+
+                gap: 15px;
+
+                font-size: 13px;
+            }
+
+
+            main {
+
+                height: auto;
+
+                grid-template-columns: 1fr;
+
+                padding: 30px 24px;
+            }
+
+
+            .left {
+
+                padding-right: 0;
+            }
+
+
+            h1 {
+
+                font-size: 58px;
+
+                letter-spacing: -2px;
+            }
+
+
+            .right {
+
+                margin-top: 40px;
+            }
+
+
+            .interaction {
+
+                position: relative;
+
+                left: auto;
+
+                bottom: auto;
+
+                width: 100%;
+
+                margin-top: 30px;
+            }
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- =================================
+         NAV
+    ================================= -->
+
+    <nav>
+
+        <div class="logo">
+            CRUMBLE
+        </div>
+
+
+        <div class="nav-links">
+
+            <span>Material</span>
+
+            <span>Response</span>
+
+            <span>Build</span>
+
+        </div>
+
+    </nav>
+
+
+    <!-- =================================
+         MAIN
+    ================================= -->
+
+    <main>
+
+
+        <!-- =============================
+             LEFT
+        ============================== -->
+
+        <section class="left">
+
+            <div class="intro">
+
+                <div class="red-line"></div>
+
+
+                <div class="eyebrow">
+                    A gesture-driven experiment
+                </div>
+
+
+                <h1>
+                    Paper<br>
+                    remembers<br>
+                    every fold.
+                </h1>
+
+
+                <p class="description">
+
+                    A printed face, cut and creased
+                    by hand, watches your webcam.
+                    Close your fist and the paper
+                    closes with it — fold by fold,
+                    until nothing flat is left.
+
+                </p>
+
+
+                <!-- <button
+                    class="start-button"
+                    id="startButton"
+                >
+
+                    See how it folds
+
+                    <span class="arrow">
+                        →
+                    </span>
+
+                </button> -->
+
+            </div>
+
+
+            <!-- Interaction information -->
+
+            <div
+                class="interaction"
+                id="interaction"
+            >
+
+                <div class="interaction-header">
+
+                    <span id="status">
+                        OPEN HAND
+                    </span>
+
+                    <span id="percentage">
+                        0%
+                    </span>
+
+                </div>
+
+
+                <div class="progress-track">
+
+                    <div
+                        class="progress"
+                        id="progress"
+                    ></div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =============================
+             RIGHT
+        ============================== -->
+
+        <section class="right">
+
+            <div class="video-wrapper">
+
+
+                <video
+                    id="crumbleVideo"
+                    preload="auto"
+                    muted
+                    playsinline
+                >
+
+                    <source
+                        src="/resources/crumbled.mp4"
+                        type="video/mp4"
+                    >
+
+                </video>
+
+
+                <div class="video-label">
+                    MATERIAL / 01
+                </div>
+
+
+                <div class="camera-status">
+
+                    <span
+                        class="dot"
+                        id="cameraDot"
+                    ></span>
+
+                    CAMERA READY
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+    </main>
+
+
+    <!-- =================================
+         JAVASCRIPT
+    ================================= -->
+
+    <script>
+
+        const video = document.getElementById("crumbleVideo");
+
+const intro = document.querySelector(".intro");
+const interaction = document.getElementById("interaction");
+
+const progress = document.getElementById("progress");
+const percentage = document.getElementById("percentage");
+const status = document.getElementById("status");
+
+let started = true;
+
+// =================================
+// START AUTOMATICALLY
+// =================================
+
+// intro.classList.add("active");
+interaction.classList.add("active");
+
+// =================================
+// GET HAND DATA
+// =================================
+
+async function updateHand() {
+    if (!started) {
+        requestAnimationFrame(updateHand);
+        return;
+    }
+
+    try {
+        const response = await fetch("/hand");
+        const data = await response.json();
+
+        let value = data.closedness;
+
+        // Safety
+        value = Math.max(0, Math.min(1, value));
+
+        // =================================
+        // VIDEO POSITION
+        // =================================
+
+        if (
+            video.duration &&
+            isFinite(video.duration)
+        ) {
+            const targetTime =
+                value * video.duration;
+
+            if (
+                Math.abs(
+                    video.currentTime - targetTime
+                ) > 0.01
+            ) {
+                video.currentTime = targetTime;
+            }
+        }
+
+        // =================================
+        // PROGRESS
+        // =================================
+
+        const percent = Math.round(value * 100);
+
+        progress.style.width = percent + "%";
+        percentage.textContent = percent + "%";
+
+        // =================================
+        // STATUS
+        // =================================
+
+        if (value < 0.12) {
+            status.textContent = "OPEN HAND";
+        }
+        else if (value < 0.35) {
+            status.textContent = "BEGIN FOLDING";
+        }
+        else if (value < 0.70) {
+            status.textContent = "FOLDING";
+        }
+        else if (value < 0.90) {
+            status.textContent = "ALMOST CLOSED";
+        }
+        else {
+            status.textContent = "FULL FIST";
+        }
+
+    } catch (error) {
+        console.log(
+            "Hand connection error:",
+            error
+        );
+    }
+
+    setTimeout(updateHand, 50);
+}
+
+// Start immediately
+updateHand();
+
+    </script>
+
+
+</body>
+
+</html>
