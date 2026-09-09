@@ -3,10 +3,7 @@ import mediapipe as mp
 
 import math
 
-def distance(p1,p2):
-    return math.sqrt(
-        (p1.x-p1.x) ** 2 + (p1.y - p2.y) ** 2
-    )
+
 # =========================================
 # MediaPipe
 # =========================================
@@ -61,7 +58,86 @@ print("Total video frames:", total_frames)
 # =========================================
 
 #qasid's logic 
-# def get_closedness(hand_landmarks):
+def get_closedness(hand_landmarks):
+    if results.multi_hand_landmarks:
+
+        for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
+
+            # Get Left / Right hand
+            hand_label = results.multi_handedness[0].classification[0].label
+
+            # print("Hand:", hand_label,i)
+    if hand_label =='Left':
+
+        index_tip = hand_landmarks.landmark[8]
+        index_pip = hand_landmarks.landmark[6]
+
+        middle_tip = hand_landmarks.landmark[12]
+        middle_pip = hand_landmarks.landmark[10]
+
+        ring_tip = hand_landmarks.landmark[16]
+        ring_pip = hand_landmarks.landmark[14]
+
+        pinky_tip = hand_landmarks.landmark[20]
+        pinky_pip = hand_landmarks.landmark[18]
+
+        thumb=hand_landmarks.landmark[4]
+        fingers_down = 0
+
+        if thumb.x>pinky_tip.x:
+
+            if ((index_tip.y > index_pip.y) and (middle_tip.y > middle_pip.y) and
+            (ring_tip.y > ring_pip.y) and (pinky_tip.y > pinky_pip.y)):
+                fingers_down=4
+
+            return fingers_down / 4.0
+        else:
+            return fingers_down 
+    elif hand_label == 'Right':
+        index_tip = hand_landmarks.landmark[8]
+        index_pip = hand_landmarks.landmark[6]
+
+        middle_tip = hand_landmarks.landmark[12]
+        middle_pip = hand_landmarks.landmark[10]
+
+        ring_tip = hand_landmarks.landmark[16]
+        ring_pip = hand_landmarks.landmark[14]
+
+        pinky_tip = hand_landmarks.landmark[20]
+        pinky_pip = hand_landmarks.landmark[18]
+
+        thumb=hand_landmarks.landmark[4]
+        fingers_down = 0
+
+        if thumb.x<pinky_tip.x:
+
+            if ((index_tip.y > index_pip.y) and (middle_tip.y > middle_pip.y) and
+            (ring_tip.y > ring_pip.y) and (pinky_tip.y > pinky_pip.y)):
+                fingers_down=4
+
+            return fingers_down / 4.0
+        else:
+            return fingers_down     
+        return 0
+# def get_angle(a, b):
+#     dx = a.x - b.x
+#     dy = a.y - b.y
+
+#     angle = math.degrees(math.atan2(dy, dx))
+
+#     print(
+#         f"[ANGLE] "
+#         f"A=({a.x:.3f}, {a.y:.3f}) "
+#         f"B=({b.x:.3f}, {b.y:.3f}) "
+#         f"dx={dx:.3f} "
+#         f"dy={dy:.3f} "
+#         f"angle={angle:.2f}°"
+#     )
+
+#     return angle
+
+# def get_closedness(hand_landmarks, hand_label):
+
 
 #     index_tip = hand_landmarks.landmark[8]
 #     index_pip = hand_landmarks.landmark[6]
@@ -75,67 +151,41 @@ print("Total video frames:", total_frames)
 #     pinky_tip = hand_landmarks.landmark[20]
 #     pinky_pip = hand_landmarks.landmark[18]
 
-#     thumb=hand_landmarks.landmark[4]
-#     fingers_down = 0
+#     thumb = hand_landmarks.landmark[4]
 
-#     if thumb.x>pinky_tip.x:
-
-#         if ((index_tip.y > index_pip.y) and (middle_tip.y > middle_pip.y) and
-#         (ring_tip.y > ring_pip.y) and (pinky_tip.y > pinky_pip.y)):
-#             fingers_down=4
-            
-
-        
-
-
-      
-
-#         return fingers_down / 4.0
-#     else:
-#          return fingers_down 
-
-def get_closedness(hand_landmarks, hand_label):
-    index_tip = hand_landmarks.landmark[8]
-    index_pip = hand_landmarks.landmark[6]
-
-    middle_tip = hand_landmarks.landmark[12]
-    middle_pip = hand_landmarks.landmark[10]
-
-    ring_tip = hand_landmarks.landmark[16]
-    ring_pip = hand_landmarks.landmark[14]
-
-    pinky_tip = hand_landmarks.landmark[20]
-    pinky_pip = hand_landmarks.landmark[18]
-
-    thumb = hand_landmarks.landmark[4]
-    # =====================================
-    # FINGER CLOSED CHECK
-    # =====================================
+#     angle = get_angle(
+#         index_pip,
+#         index_tip
+#     )
+#     print("Index angle:", angle)
+#     # =====================================
+#     # FINGER CLOSED CHECK
+#     # =====================================
     
 
-    # =====================================
-    # CHECK ALL 4 FINGERS CLOSED
-    # =====================================
+#     # =====================================
+#     # CHECK ALL 4 FINGERS CLOSED
+#     # =====================================
 
-    all_Closed=(
-        index_tip.y > index_pip.y and
-        middle_tip.y > middle_pip.y and
-        ring_tip.y > ring_pip.y and
-        pinky_tip.y > pinky_pip.y
-    )
+#     all_Closed=(
+#         index_tip.y > index_pip.y and
+#         middle_tip.y > middle_pip.y and
+#         ring_tip.y > ring_pip.y and
+#         pinky_tip.y > pinky_pip.y
+#     )
 
-    if not all_Closed:
-        return 0.0
-    # =====================================
-    # HAND DIRECTION
-    # =====================================
-    if hand_label == "Left":
-        valid_direction = thumb.x > pinky_tip.x
-    else:
-        valid_direction = thumb.x < pinky_tip.x
-    if valid_direction:
-        return 1.0
-    return 0.0
+#     if not all_Closed:
+#         return 0.0
+#     # =====================================
+#     # HAND DIRECTION
+#     # =====================================
+#     if hand_label == "Left":
+#         valid_direction = thumb.x > pinky_tip.x
+#     else:
+#         valid_direction = thumb.x < pinky_tip.x
+#     if valid_direction:
+#         return 1.0
+#     return 0.0
 
 
     
@@ -169,6 +219,7 @@ while True:
         frame,
         cv2.COLOR_BGR2RGB
     )
+    # print(rgb.shape)
 
     results = hands.process(rgb)
 
@@ -205,8 +256,7 @@ while True:
             # Get folded finger percentage
 
             closedness = get_closedness(
-                hand_landmarks,
-                hand_label
+                hand_landmarks
             )
 
 
