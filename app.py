@@ -1,6 +1,5 @@
 import cv2
 import mediapipe as mp
-
 import math
 
 
@@ -67,8 +66,16 @@ def get_closedness(hand_landmarks):
             hand_label = results.multi_handedness[0].classification[0].label
 
             # print("Hand:", hand_label,i)
+        # Get wrist and middle MCP for angle calculation
+    wrist = hand_landmarks.landmark[0]
+    middle_mcp = hand_landmarks.landmark[9]
+
+    hand_angle = math.atan2(middle_mcp.y - wrist.y, middle_mcp.x - wrist.x)
+    hand_angle_deg = math.degrees(hand_angle)
+    norm_angle = hand_angle_deg % 360
+    print(norm_angle," Norm Angle")
     if hand_label =='Left':
-
+        print("LEFT HAND DETECTED")
         index_tip = hand_landmarks.landmark[8]
         index_pip = hand_landmarks.landmark[6]
 
@@ -83,17 +90,103 @@ def get_closedness(hand_landmarks):
 
         thumb=hand_landmarks.landmark[4]
         fingers_down = 0
+        thumb_pinky_check = False
+        print(norm_angle, "TRUE TRUE TRUE")
+        if (270 <= norm_angle < 360):
+       
+            #LEFT hand
+            #Tumb should be to the right of pinky
+            if thumb.x > pinky_tip.x:
+               
+                thumb_pinky_check = True
+                
 
-        if thumb.x>pinky_tip.x:
+            if (
+                (index_tip.y > index_pip.y) and
+                (middle_tip.y > middle_pip.y) and
+                (ring_tip.y > ring_pip.y) and
+                (pinky_tip.y > pinky_pip.y)
+                ):
+                print("ALL 4 FINGERS DOWN")
+                fingers_down = 4
+            return fingers_down / 4.0
 
-            if ((index_tip.y > index_pip.y) and (middle_tip.y > middle_pip.y) and
-            (ring_tip.y > ring_pip.y) and (pinky_tip.y > pinky_pip.y)):
-                fingers_down=4
+        if (norm_angle >= 0) and (norm_angle < 90):
+            # print(norm_angle, "TRUE")
+            if (thumb.y > pinky_tip.y) or (thumb.y<pinky_tip.y):
+                # print("thumb.x =", thumb.x)
+                # print("pinky.x =", pinky_tip.x)
+                thumb_pinky_check = True
+
+                
+            if thumb_pinky_check:
+                # print(thumb_pinky_check, "thumb_pinky_check")
+
+                print(
+                    "1", index_tip.y > index_pip.y ,
+                      "2"  , middle_tip.y > middle_pip.y ,
+                        "3" , ring_tip.y > ring_pip.y ,
+                            "4",pinky_tip.y > pinky_pip.y 
+                 )
+                
+                if (
+                    index_tip.x < index_pip.x and
+                    middle_tip.x < middle_pip.x and
+                    ring_tip.x < ring_pip.x and
+                    pinky_tip.x < pinky_pip.x 
+                ):
+                 fingers_down = 4
+                print(fingers_down, "fingers_down")
 
             return fingers_down / 4.0
+            
+        if(180 <= norm_angle  < 270):
+            if thumb.y < pinky_tip.y:
+                print("thumb.y =", thumb.y)
+                print("pinky.y =", pinky_tip.y)
+                thumb_pinky_check = True
+            if thumb_pinky_check:
+                print(thumb_pinky_check, "thumb_pinky_check")
+                if (
+                    (index_tip.x > index_pip.x) and
+                    (middle_tip.x > middle_pip.x) and
+                    (ring_tip.x > ring_pip.x) and
+                    (pinky_tip.x > pinky_pip.x) 
+                                ):
+                 
+                 
+                 
+
+
+                 fingers_down = 4
+                return fingers_down / 4.0
+            else:
+                return 0
+        if(90 <= norm_angle < 180):
+            print("thumb.y =", thumb.y)
+            print("pinky.y =", pinky_tip.y)
+            if thumb.x < pinky_tip.x:
+                print("thumb.x =", thumb.x)
+                print("pinky.x =", pinky_tip.x)
+                if (
+                    (index_tip.y < index_pip.y) and
+                    (middle_tip.y < middle_pip.y) and
+                    (ring_tip.y < ring_pip.y) and
+                    (pinky_tip.y < pinky_pip.y)
+                    ):
+                 
+                 fingers_down=4
+                 
+                return fingers_down/4
+            else:
+                return 0    
+                                 
         else:
-            return fingers_down 
+            print("out")
+            return 0.0 
     elif hand_label == 'Right':
+
+        print("RIGHT HAND DETECTED")
         index_tip = hand_landmarks.landmark[8]
         index_pip = hand_landmarks.landmark[6]
 
@@ -108,17 +201,81 @@ def get_closedness(hand_landmarks):
 
         thumb=hand_landmarks.landmark[4]
         fingers_down = 0
+        thumb_pinky_check = False
+        # For upright (0-90 or 270-360)
+        if (norm_angle > 180) and (norm_angle < 270):
+            # Right hand upright: thumb should be to the left of pinky
+            if thumb.x < pinky_tip.x:
+                thumb_pinky_check = True
+            # Compare Y: tip should be BELOW pip (y > pip.y)
+            if thumb_pinky_check:
+                if ((index_tip.y > index_pip.y) and (middle_tip.y > middle_pip.y) and
+                    (ring_tip.y > ring_pip.y) and (pinky_tip.y > pinky_pip.y)):
+                    fingers_down = 4
+            return fingers_down / 4.0
 
-        if thumb.x<pinky_tip.x:
 
-            if ((index_tip.y > index_pip.y) and (middle_tip.y > middle_pip.y) and
-            (ring_tip.y > ring_pip.y) and (pinky_tip.y > pinky_pip.y)):
-                fingers_down=4
+        if (norm_angle >= 90) and (norm_angle < 180):
+            print(norm_angle, "TRUE")
+            # Right hand upright: thumb should be to the left of pinky
+            if thumb.x < pinky_tip.x:
+                thumb_pinky_check = True
+            # Compare Y: tip should be BELOW pip (y > pip.y)
+
+          
+            if thumb_pinky_check:
+                if ((index_tip.x > index_pip.x) and (middle_tip.x > middle_pip.x) and
+                    (ring_tip.x > ring_pip.x) and (pinky_tip.x > pinky_pip.x)):
+                    fingers_down = 4
+            return fingers_down / 4.0
+        if (norm_angle > 270) and (norm_angle < 360):
+            
+            # Right hand upright: thumb should be to the left of pinky
+            if thumb.x > pinky_tip.x:
+                thumb_pinky_check = True
+            # Compare Y: tip should be BELOW pip (y > pip.y)
+            if thumb_pinky_check:
+                if ((index_tip.x < index_pip.x) and (middle_tip.x < middle_pip.x) and
+                    (ring_tip.x < ring_pip.x) and (pinky_tip.x < pinky_pip.x)):
+                    fingers_down = 4
+            return fingers_down / 4.0
+        
+        if (norm_angle >= 0) and (norm_angle < 90):
+
+            print(norm_angle, "TRUE")
+
+            if thumb.x > pinky_tip.x:
+
+                thumb_pinky_check = True
+
+                if thumb_pinky_check:
+
+                    if ((index_tip.y < index_pip.y) and
+                        (middle_tip.y < middle_pip.y) and
+                        (ring_tip.y < ring_pip.y) and
+                        (pinky_tip.y < pinky_pip.y)):
+
+                        fingers_down = 4
 
             return fingers_down / 4.0
+        
+       
         else:
-            return fingers_down     
-        return 0
+            return 0.0
+        # if thumb.x<pinky_tip.x:
+
+        #     if ((index_tip.y > index_pip.y) and (middle_tip.y > middle_pip.y) and
+        #     (ring_tip.y > ring_pip.y) and (pinky_tip.y > pinky_pip.y)):
+        #         fingers_down=4
+
+        #     return fingers_down / 4.0
+        # else:
+        #     return fingers_down     
+        # return 0
+
+
+
+
 # def get_angle(a, b):
 #     dx = a.x - b.x
 #     dy = a.y - b.y
