@@ -1,0 +1,500 @@
+.page {
+  min-height: 100vh;
+  color: #eee9df;
+}
+
+/* =================================
+   NAVIGATION
+================================= */
+
+nav {
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  position: relative;
+  z-index: 10;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 42px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.nav-links a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.nav-links a:hover {
+  opacity: 0.5;
+}
+
+/* =================================
+   MAIN
+================================= */
+
+main {
+  min-height: calc(100vh - 90px);
+  display: grid;
+  grid-template-columns: 48% 52%;
+  gap: 40px;
+  padding: 20px 48px 60px;
+  align-items: center;
+}
+
+/* =================================
+   LEFT SIDE
+================================= */
+
+.left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 72px;
+  position: relative;
+}
+
+.red-line {
+  width: 62px;
+  height: 1px;
+  background: #b8392f;
+  margin-bottom: 34px;
+}
+
+.eyebrow {
+  font-family: Georgia, serif;
+  color: #a9a296;
+  font-size: 15px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+h1 {
+  font-size: clamp(50px, 5.5vw, 88px);
+  line-height: 0.94;
+  letter-spacing: -3px;
+  font-weight: 700;
+  max-width: 620px;
+}
+
+.description {
+  margin-top: 32px;
+  max-width: 500px;
+  font-family: Georgia, serif;
+  color: #aaa39a;
+  font-size: 19px;
+  line-height: 1.75;
+}
+
+/* =================================
+   BUTTONS
+================================= */
+
+.start-button {
+  margin-top: 36px;
+  width: fit-content;
+  padding: 18px 28px;
+  border: 1px solid #343434;
+  background: transparent;
+  color: #eee9df;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.3s, border 0.3s, opacity 0.3s;
+  display: flex;
+  align-items: center;
+}
+
+.start-button:hover:not(:disabled) {
+  background: #eee9df;
+  color: #080808;
+  border-color: #eee9df;
+}
+
+.start-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.start-button.stop {
+  border-color: #b8392f;
+  color: #e0a49b;
+}
+
+.start-button.stop:hover {
+  background: #b8392f;
+  color: #eee9df;
+  border-color: #b8392f;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 36px;
+}
+
+.button-row .start-button {
+  margin-top: 0;
+}
+
+.start-button.ghost {
+  border-color: #2b2b2b;
+  color: #a9a296;
+}
+
+.start-button.ghost:hover {
+  background: transparent;
+  color: #eee9df;
+  border-color: #eee9df;
+}
+
+.arrow {
+  color: #b8392f;
+  margin-left: 18px;
+  font-size: 20px;
+}
+
+.start-button:hover:not(:disabled) .arrow {
+  color: #b8392f;
+}
+
+.error-text {
+  margin-top: 16px;
+  color: #e0857a;
+  font-size: 14px;
+  max-width: 480px;
+  line-height: 1.5;
+}
+
+/* =================================
+   RIGHT SIDE
+================================= */
+
+.right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-wrapper {
+  width: min(100%, 560px);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #101414;
+  position: relative;
+  border: 1px solid #1e1e1e;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Webcam feed used only for tracking — kept out of the layout and never
+   rendered on screen. */
+.offscreen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* =================================
+   VIDEO OVERLAY
+================================= */
+
+.video-label {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.camera-status {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 8px 12px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #565656;
+  transition: background 0.3s;
+}
+
+.dot.live {
+  background: #b8392f;
+  box-shadow: 0 0 8px #b8392f;
+}
+
+/* =================================
+   INTERACTION PANEL
+================================= */
+
+.interaction {
+  margin-top: 44px;
+  width: min(100%, 480px);
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+  transition: opacity 0.5s, transform 0.5s;
+}
+
+.interaction.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.interaction-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 3px;
+  background: #272727;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background: #eee9df;
+  transition: width 0.08s linear;
+}
+
+/* =================================
+   CONTENT SECTIONS
+================================= */
+
+.content-section {
+  padding: 100px 48px;
+  border-top: 1px solid #1a1a1a;
+}
+
+.section-heading {
+  margin-bottom: 56px;
+}
+
+.section-heading .red-line {
+  margin-bottom: 24px;
+}
+
+.section-heading h2 {
+  font-size: clamp(32px, 3.5vw, 48px);
+  letter-spacing: -1.5px;
+  font-weight: 700;
+  max-width: 600px;
+}
+
+/* ---- Material ---- */
+
+.material-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+.material-card {
+  border: 1px solid #1e1e1e;
+  padding: 32px 28px;
+}
+
+.material-index {
+  display: block;
+  font-family: Georgia, serif;
+  color: #b8392f;
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.material-card p {
+  font-family: Georgia, serif;
+  color: #aaa39a;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* ---- Response ---- */
+
+.stages {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  background: #1a1a1a;
+}
+
+.stage-card {
+  background: #080808;
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stage-range {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #b8392f;
+  font-weight: 600;
+}
+
+.stage-label {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.stage-note {
+  font-family: Georgia, serif;
+  color: #aaa39a;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ---- Build ---- */
+
+.build-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+.build-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-bottom: 14px;
+}
+
+.build-card p {
+  font-family: Georgia, serif;
+  color: #aaa39a;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ---- Footer ---- */
+
+.page-footer {
+  padding: 40px 48px;
+  border-top: 1px solid #1a1a1a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #a9a296;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.back-to-top {
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.3s;
+}
+
+.back-to-top:hover {
+  opacity: 0.6;
+}
+
+/* =================================
+   RESPONSIVE
+================================= */
+
+@media (max-width: 900px) {
+  nav {
+    padding: 0 24px;
+  }
+
+  .nav-links {
+    gap: 15px;
+    font-size: 13px;
+  }
+
+  main {
+    grid-template-columns: 1fr;
+    padding: 30px 24px;
+  }
+
+  .left {
+    padding-left: 0;
+  }
+
+  h1 {
+    font-size: 52px;
+    letter-spacing: -2px;
+  }
+
+  .right {
+    margin-top: 20px;
+  }
+
+  .interaction {
+    width: 100%;
+  }
+
+  .content-section {
+    padding: 64px 24px;
+  }
+
+  .material-grid,
+  .build-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stages {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .page-footer {
+    padding: 32px 24px;
+  }
+}
+
+@media (max-width: 560px) {
+  .stages {
+    grid-template-columns: 1fr;
+  }
+}
