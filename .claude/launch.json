@@ -4,9 +4,25 @@
     {
       "name": "web-ui",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "web-ui", "run", "dev", "--", "--host"],
+      "runtimeArgs": [
+        "--prefix",
+        "web-ui",
+        "run",
+        "dev",
+        "--",
+        "--host"
+      ],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "flask-app",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "-3.12",
+        "app.py"
+      ],
+      "port": 5000
     }
   ]
 }

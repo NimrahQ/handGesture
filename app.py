@@ -1,6 +1,14 @@
 import cv2
 import mediapipe as mp
 import math
+import os
+import threading
+import time
+
+from flask import Flask, Response, jsonify, render_template, send_from_directory
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # =========================================
@@ -22,19 +30,22 @@ mp_draw = mp.solutions.drawing_utils
 # =========================================
 # CAMERA
 # =========================================
+cap = None
+camera_lock = threading.Lock()
 
-cap = cv2.VideoCapture(0)
+camera_on = False
+# cap = cv2.VideoCapture(0)
 
-if not cap.isOpened():
-    print("Could not open camera")
-    exit()
+# if not cap.isOpened():
+#     print("Could not open camera")
+#     exit()
 
 
 # =========================================
 # VIDEO
 # =========================================
 
-VIDEO_PATH = "resources/crumbled.mp4"
+VIDEO_PATH = os.path.join(BASE_DIR, "resources", "crumbled.mp4")
 
 video = cv2.VideoCapture(VIDEO_PATH)
 
@@ -348,158 +359,329 @@ def get_closedness(hand_landmarks):
     
 
 # =========================================
-# MAIN LOOP
+# SHARED STATE (read by the web page)
 # =========================================
 
-while True:
+state_lock = threading.Lock()
 
-    # =====================================
-    # GET CAMERA FRAME
-    # =====================================
-
-    success, frame = cap.read()
-
-    if not success:
-        break
-
-
-    # Mirror webcam
-
-    frame = cv2.flip(frame, 1)
+state = {
+    "closedness": 0.0,
+    "frame": 0,
+    "total_frames": total_frames,
+    "hand": None,
+    "camera_jpg": None,
+    "video_jpg": None,
+}
 
 
-    # =====================================
-    # MEDIAPIPE
-    # =====================================
-
-    rgb = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2RGB
-    )
-    # print(rgb.shape)
-
-    results = hands.process(rgb)
+# =========================================
+# MAIN LOOP (runs in a background thread)
+# =========================================
 
 
-    # Default:
-    # video stays at beginning
+def start_camera():
 
-    closedness = 0.0
-
-
-    # =====================================
-    # DETECT HAND
-    # =====================================
-
-    if results.multi_hand_landmarks:
-
-        for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
-
-            # Get Left / Right hand
-            hand_label = results.multi_handedness[i].classification[0].label
-
-            print("Hand:", hand_label)
+    global cap
+    global camera_on
 
 
-            # Draw hand
+    with camera_lock:
+        if camera_on:
+            return True
 
-            mp_draw.draw_landmarks(
-                frame,
-                hand_landmarks,
-                mp_hands.HAND_CONNECTIONS
+        print("Starting...")
+        cap = cv2.VideoCapture(0)
+
+        if not cap.isOpened():
+            print("could not ")
+
+            cap = None
+            camera_on = False
+
+            return False
+        camera_on = True
+        print("Camera ON")
+
+        return True
+
+
+def stop_camera():
+        global cap 
+        global camera_on 
+        with camera_lock: 
+            if not camera_on: 
+                return
+            print("Stopping camera...")
+            camera_on = False
+
+            if cap is not None:
+                cap.release()
+                cap = None
+            # Clear camera frame
+            with state_lock:
+                state["camera_jpg"]= None
+                state['closedness'] = 0.0
+                state["hand"] = None
+
+                print("Camera OFF")
+
+
+def processing_loop():
+
+    global results
+
+    while True:
+
+        # =====================================
+        # GET CAMERA FRAME
+        # =====================================
+        if not camera_on:
+            time.sleep(0.05)
+            continue
+
+        with camera_lock:
+            current_cap = cap
+
+        if current_cap is None:
+            time.sleep(0.05)
+            continue
+
+        success, frame = current_cap.read()
+
+        if not success:
+            time.sleep(0.05)
+            continue
+
+
+        # Mirror webcam
+
+        frame = cv2.flip(frame, 1)
+
+
+        # =====================================
+        # MEDIAPIPE
+        # =====================================
+
+        rgb = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2RGB
+        )
+
+        results = hands.process(rgb)
+
+
+        # Default:
+        # video stays at beginning
+
+        closedness = 0.0
+        hand_label = None
+
+
+        # =====================================
+        # DETECT HAND
+        # =====================================
+
+        if results.multi_hand_landmarks:
+
+            for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
+
+                # Get Left / Right hand
+                hand_label = results.multi_handedness[i].classification[0].label
+
+                print("Hand:", hand_label)
+
+
+                # Draw hand
+
+                mp_draw.draw_landmarks(
+                    frame,
+                    hand_landmarks,
+                    mp_hands.HAND_CONNECTIONS
+                )
+
+
+                # Get folded finger percentage
+
+                closedness = get_closedness(
+                    hand_landmarks
+                ) or 0.0
+
+
+        # =====================================
+        # CONVERT HAND POSITION
+        # TO VIDEO FRAME
+        # =====================================
+
+        target_frame = int(
+            closedness * (total_frames - 1)
+        )
+
+
+        # Keep frame inside video
+
+        target_frame = max(
+            0,
+            min(total_frames - 1, target_frame)
+        )
+
+
+        # =====================================
+        # JUMP TO VIDEO FRAME
+        # =====================================
+
+        video.set(
+            cv2.CAP_PROP_POS_FRAMES,
+            target_frame
+        )
+
+
+        video_success, video_frame = video.read()
+
+
+        if not video_success:
+
+            print("Could not read video frame")
+            continue
+
+
+        # =====================================
+        # SEND FRAMES TO THE WEB PAGE
+        # (instead of cv2.imshow windows)
+        # =====================================
+
+        _, camera_jpg = cv2.imencode(".jpg", frame)
+        _, video_jpg = cv2.imencode(".jpg", video_frame)
+
+        with state_lock:
+            state["closedness"] = float(closedness)
+            state["frame"] = target_frame
+            state["hand"] = hand_label
+            state["camera_jpg"] = camera_jpg.tobytes()
+            state["video_jpg"] = video_jpg.tobytes()
+
+
+        # =====================================
+        # DEBUG
+        # =====================================
+
+        print(
+            f"Closedness: {closedness:.2f} | "
+            f"Frame: {target_frame}/{total_frames - 1}"
+        )
+
+
+# =========================================
+# WEB UI
+# =========================================
+
+app = Flask(__name__)
+
+# Pick up edits to templates/index.html without restarting
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+
+
+def mjpeg_stream(key):
+
+    while True:
+
+        with state_lock:
+            jpg = state[key]
+
+        if jpg is not None:
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n"
             )
 
-
-            # Get folded finger percentage
-
-            closedness = get_closedness(
-                hand_landmarks
-            )
+        time.sleep(1 / 30)
 
 
-    # =====================================
-    # CONVERT HAND POSITION
-    # TO VIDEO FRAME
-    # =====================================
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-    target_frame = int(
-        closedness * (total_frames - 1)
+
+@app.route("/video_feed")
+def video_feed():
+    return Response(
+        mjpeg_stream("video_jpg"),
+        mimetype="multipart/x-mixed-replace; boundary=frame"
     )
 
 
-    # Keep frame inside video
-
-    target_frame = max(
-        0,
-        min(total_frames - 1, target_frame)
+@app.route("/camera_feed")
+def camera_feed():
+    return Response(
+        mjpeg_stream("camera_jpg"),
+        mimetype="multipart/x-mixed-replace; boundary=frame"
     )
+@app.route("/start_camera")
+def start_camera_route():
+
+    if start_camera():
+        return jsonify(status="camera_on")
+
+    return jsonify(status="error"), 500
 
 
-    # =====================================
-    # JUMP TO VIDEO FRAME
-    # =====================================
+@app.route("/stop_camera")
+def stop_camera_route():
 
-    video.set(
-        cv2.CAP_PROP_POS_FRAMES,
-        target_frame
-    )
+    stop_camera()
 
+    return jsonify(status="camera_off")
 
-    video_success, video_frame = video.read()
-
-
-    if not video_success:
-
-        print("Could not read video frame")
-        break
-
-
-    # =====================================
-    # SHOW VIDEO
-    # =====================================
-
-    cv2.imshow(
-        "CRUMBLING VIDEO",
-        video_frame
-    )
+@app.route("/hand")
+def hand():
+    with state_lock:
+        return jsonify(
+            closedness=state["closedness"],
+            frame=state["frame"],
+            total_frames=state["total_frames"],
+            hand=state["hand"],
+        )
 
 
-    # =====================================
-    # SHOW CAMERA
-    # =====================================
+@app.route("/resources/<path:filename>")
+def resources(filename):
+    return send_from_directory(os.path.join(BASE_DIR, "resources"), filename)
 
-    cv2.imshow(
-        "HAND CAMERA",
-        frame
-    )
+video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+ok, first_frame = video.read()
+if not ok:
+    print("Could not read first frame")
+    exit()
 
-
-    # =====================================
-    # DEBUG
-    # =====================================
-
-    print(
-        f"Closedness: {closedness:.2f} | "
-        f"Frame: {target_frame}/{total_frames - 1}"
-    )
+_, poster_buf = cv2.imencode(".jpg", first_frame)
+POSTER_JPG = poster_buf.tobytes()
 
 
-    # =====================================
-    # ESC
-    # =====================================
-
-    if cv2.waitKey(1) & 0xFF == 27:
-        break
-
-
+# with your other routes
+@app.route("/poster")
+def poster():
+    return Response(POSTER_JPG, mimetype="image/jpeg")
 # =========================================
-# CLEANUP
+# START
 # =========================================
 
-cap.release()
+if __name__ == "__main__":
 
-video.release()
+    threading.Thread(target=processing_loop, daemon=True).start()
 
-cv2.destroyAllWindows()
+    print("Open http://127.0.0.1:5000 in your browser")
 
-hands.close()
+    try:
+        app.run(host="127.0.0.1", port=5000, threaded=True, use_reloader=False)
+
+    finally:
+
+        # =========================================
+        # CLEANUP
+        # =========================================
+        if cap is not None:
+
+            cap.release()
+
+            video.release()
+
+            hands.close()
