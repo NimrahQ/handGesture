@@ -4,7 +4,7 @@ import math
 import os
 import threading
 import time
-
+from scroll import two_finger_scroll
 from flask import Flask, Response, jsonify, render_template, send_from_directory
 
 
@@ -68,16 +68,8 @@ print("Total video frames:", total_frames)
 # =========================================
 
 #qasid's logic 
-def get_closedness(hand_landmarks):
-    if results.multi_hand_landmarks:
-
-        for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
-
-            # Get Left / Right hand
-            hand_label = results.multi_handedness[0].classification[0].label
-
-            # print("Hand:", hand_label,i)
-        # Get wrist and middle MCP for angle calculation
+def get_closedness(hand_landmarks, hand_label):
+    # Get wrist and middle MCP for angle calculation
     wrist = hand_landmarks.landmark[0]
     middle_mcp = hand_landmarks.landmark[9]
 
@@ -426,72 +418,121 @@ def stop_camera():
                 print("Camera OFF")
 
 
+def draw_scroll_box(frame):
+    h,w = frame.shape[:2]
+
+    #BOX SIZE
+
+    box_width = int(w * 0.60)
+    box_height = int(h * 0.75)
+
+    # Center the box
+    x1 = (w - box_width) //2
+    y1 = (h-box_height)//2
+
+
+    x2 = x1 + box_width
+    y2 = y1 + box_height
+
+    # Draw rectangular
+
+    cv2.rectangle(
+        frame,
+        (x1,y1),
+        (x2,y2),
+        (0,255,0),
+        2
+    )
+
+    #optional center line
+    center_y = (y1+y2) // 2
+    cv2.line(
+        frame,
+        (x1, center_y),
+        (x2,center_y),
+        (0,255,255),
+        1
+    )
+    return x1,y1,x2,y2
+
+
+
+scroll_active = [False]
+
+
 def processing_loop():
 
-    global results
+    frame_count = 0
+
+    # Persist across frames so skipped MediaPipe frames reuse the last result
+    results = None
+    closedness = 0.0
+    hand_label = None
+
+    last_target = -1
+    video_frame = None
 
     while True:
 
-        # =====================================
-        # GET CAMERA FRAME
-        # =====================================
-        if not camera_on:
-            time.sleep(0.05)
-            continue
+        try:
 
-        with camera_lock:
-            current_cap = cap
+            # =====================================
+            # GET CAMERA FRAME
+            # =====================================
 
-        if current_cap is None:
-            time.sleep(0.05)
-            continue
+            with camera_lock:
+                current_cap = cap if camera_on else None
 
-        success, frame = current_cap.read()
+                # Read under the lock so stop_camera() can't release
+                # the capture while we are inside read()
+                if current_cap is not None:
+                    success, frame = current_cap.read()
+                else:
+                    success, frame = False, None
 
-        if not success:
-            time.sleep(0.05)
-            continue
+            if not success:
+                if current_cap is None:
+                    # Camera was turned off: forget stale detections
+                    results = None
+                    closedness = 0.0
+                    hand_label = None
+                    frame_count = 0
+                time.sleep(0.03)
+                continue
 
+            frame_count += 1
 
-        # Mirror webcam
+            # Mirror webcam
+            frame = cv2.flip(frame, 1)
 
-        frame = cv2.flip(frame, 1)
+            # =====================================
+            # MEDIAPIPE (every 5th frame)
+            # =====================================
 
+            if frame_count % 5 == 0:
 
-        # =====================================
-        # MEDIAPIPE
-        # =====================================
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                results = hands.process(rgb)
 
-        rgb = cv2.cvtColor(
-            frame,
-            cv2.COLOR_BGR2RGB
-        )
+                closedness = 0.0
+                hand_label = None
 
-        results = hands.process(rgb)
+                if results and results.multi_hand_landmarks:
+                    hand_landmarks = results.multi_hand_landmarks[0]
+                    hand_label = results.multi_handedness[0].classification[0].label
 
+                    closedness = get_closedness(
+                        hand_landmarks,
+                        hand_label
+                    ) or 0.0
 
-        # Default:
-        # video stays at beginning
+            # =====================================
+            # DRAW + TWO-FINGER SCROLL
+            # =====================================
 
-        closedness = 0.0
-        hand_label = None
+            if results and results.multi_hand_landmarks:
 
-
-        # =====================================
-        # DETECT HAND
-        # =====================================
-
-        if results.multi_hand_landmarks:
-
-            for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
-
-                # Get Left / Right hand
-                hand_label = results.multi_handedness[i].classification[0].label
-
-                print("Hand:", hand_label)
-
-
-                # Draw hand
+                hand_landmarks = results.multi_hand_landmarks[0]
 
                 mp_draw.draw_landmarks(
                     frame,
@@ -499,75 +540,71 @@ def processing_loop():
                     mp_hands.HAND_CONNECTIONS
                 )
 
+                h, w = frame.shape[:2]
 
-                # Get folded finger percentage
+                box_width = int(w * 0.60)
+                box_height = int(h * 0.75)
 
-                closedness = get_closedness(
-                    hand_landmarks
-                ) or 0.0
+                y1 = (h - box_height) // 2
+                y2 = y1 + box_height
 
+                # Only act on fresh detections, not stale cached ones
+                if frame_count % 5 == 0:
+                    is_scrolling = two_finger_scroll(
+                        hand_landmarks,
+                        y1,
+                        y2,
+                        h
+                    )
+                    scroll_active[0] = is_scrolling
 
-        # =====================================
-        # CONVERT HAND POSITION
-        # TO VIDEO FRAME
-        # =====================================
+                if scroll_active[0]:
+                    draw_scroll_box(frame)
 
-        target_frame = int(
-            closedness * (total_frames - 1)
-        )
+            # =====================================
+            # CONVERT HAND POSITION TO VIDEO FRAME
+            # =====================================
 
+            target_frame = max(
+                0,
+                min(total_frames - 1, int(closedness * (total_frames - 1)))
+            )
 
-        # Keep frame inside video
+            if target_frame != last_target or video_frame is None:
+                video.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+                video_success, new_frame = video.read()
 
-        target_frame = max(
-            0,
-            min(total_frames - 1, target_frame)
-        )
+                if video_success:
+                    video_frame = new_frame
+                    last_target = target_frame
 
+            if video_frame is None:
+                time.sleep(0.03)
+                continue
 
-        # =====================================
-        # JUMP TO VIDEO FRAME
-        # =====================================
+            # =====================================
+            # SEND FRAMES TO THE WEB PAGE
+            # =====================================
 
-        video.set(
-            cv2.CAP_PROP_POS_FRAMES,
-            target_frame
-        )
+            ok_cam, camera_jpg = cv2.imencode(".jpg", frame)
+            ok_vid, video_jpg = cv2.imencode(".jpg", video_frame)
 
+            if not (ok_cam and ok_vid):
+                continue
 
-        video_success, video_frame = video.read()
+            with state_lock:
+                # stop_camera() may have cleared state while we worked
+                if camera_on:
+                    state["closedness"] = float(closedness)
+                    state["frame"] = target_frame
+                    state["hand"] = hand_label
+                    state["camera_jpg"] = camera_jpg.tobytes()
+                    state["video_jpg"] = video_jpg.tobytes()
 
-
-        if not video_success:
-
-            print("Could not read video frame")
-            continue
-
-
-        # =====================================
-        # SEND FRAMES TO THE WEB PAGE
-        # (instead of cv2.imshow windows)
-        # =====================================
-
-        _, camera_jpg = cv2.imencode(".jpg", frame)
-        _, video_jpg = cv2.imencode(".jpg", video_frame)
-
-        with state_lock:
-            state["closedness"] = float(closedness)
-            state["frame"] = target_frame
-            state["hand"] = hand_label
-            state["camera_jpg"] = camera_jpg.tobytes()
-            state["video_jpg"] = video_jpg.tobytes()
-
-
-        # =====================================
-        # DEBUG
-        # =====================================
-
-        print(
-            f"Closedness: {closedness:.2f} | "
-            f"Frame: {target_frame}/{total_frames - 1}"
-        )
+        except Exception as e:
+            # Never let the worker thread die; a dead thread = frozen camera
+            print("processing_loop error:", repr(e))
+            time.sleep(0.1)
 
 
 # =========================================
